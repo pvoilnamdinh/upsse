@@ -222,8 +222,9 @@ def _create_bvmt_row(original_row, phi_bvmt, static_data, khu_vuc):
     bvmt_row[21] = tk_thue_co_bvmt
     bvmt_row[36] = round(phi_bvmt * so_luong * thue_suat)
 
-    # Xóa các trường không cần thiết
-    for i in [5, 23, 31, 32, 33]: bvmt_row[i] = ''
+    # Xóa các trường không cần thiết, nhưng giữ lại mã vụ việc (cột 23)
+    # Mã vụ việc đã được gán ở dòng gốc và được kế thừa qua `list(original_row)`
+    for i in [5, 31, 32, 33]: bvmt_row[i] = ''
     
     return bvmt_row
 
