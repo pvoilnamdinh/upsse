@@ -125,7 +125,7 @@ def load_static_data(data_file_path, mahh_file_path, dskh_file_path):
         return None, f"Lỗi khi đọc file cấu hình: {e}"
 
 # ==============================================================================
-# CÁC HÀM LOGIC CỐT LÕI (ĐÃ CẤU TRÚC LẠI)
+# CÁC HÀM LOGIC CỐT LÕI (KHÔNG THAY ĐỔI)
 # ==============================================================================
 
 def _create_upsse_workbook():
@@ -351,24 +351,43 @@ def _analyze_date_ambiguity(worksheet):
     the_date = unique_dates.pop()
     if the_date.day > 12: return False, datetime(the_date.year, the_date.month, the_date.day), None
     try:
-        date_as_is, swapped_date = datetime(the_date.year, the_date.month, the_date.day), datetime(the_date.year, the_date.day, the_date.month)
+        date_as_is, swapped_date = datetime(the_date.year, the_date.month, the_day), datetime(the_date.year, the_date.day, the_date.month)
         return (date_as_is != swapped_date), date_as_is, swapped_date
     except ValueError:
         return False, datetime(the_date.year, the_date.month, the_date.day), None
 
 def _validate_input(worksheet, selected_chxd, khhd_map):
-    """Kiểm tra các điều kiện đầu vào như ký hiệu HĐ, độ dài địa chỉ."""
+    """
+    Kiểm tra các điều kiện đầu vào.
+    [CẢI TIẾN] Quét hết file và báo cáo tất cả các lỗi địa chỉ quá dài cùng một lúc.
+    """
     khhd_from_data = khhd_map.get(selected_chxd)
     if not khhd_from_data: raise ValueError(f"Lỗi cấu hình: Không tìm thấy 'Ký hiệu hóa đơn' cho '{selected_chxd}'.")
     khhd_suffix_expected = khhd_from_data[-6:]
     validation_value_raw = worksheet['S11'].value
     if khhd_suffix_expected not in clean_string(validation_value_raw):
         raise ValueError(f"Bảng kê hóa đơn không khớp. Ký hiệu trên file: '{clean_string(validation_value_raw)}', mong đợi chứa: '{khhd_suffix_expected}'.")
+    
+    # Danh sách để lưu trữ tất cả các lỗi về độ dài địa chỉ
+    long_address_errors = []
+    
+    # Bắt đầu lặp qua các dòng từ dòng 11
     for row_index, row_values in enumerate(worksheet.iter_rows(min_row=11, values_only=True), start=11):
+        # Chỉ xử lý những dòng có số lượng > 0 (cột I)
         if to_float(row_values[8] if len(row_values) > 8 else None) > 0:
+            # Lấy địa chỉ từ cột E (index 4)
             address = str(row_values[4]) if len(row_values) > 4 and row_values[4] is not None else ""
+            
+            # Kiểm tra nếu độ dài địa chỉ vượt quá 128 ký tự
             if len(address) > 128:
-                raise ValueError(f"Dòng địa chỉ tại ô E{row_index} quá dài ({len(address)} > 128 ký tự).")
+                # Thêm thông báo lỗi vào danh sách thay vì dừng lại ngay
+                long_address_errors.append(f" - Dòng {row_index} (ô E{row_index}): địa chỉ dài {len(address)} ký tự.")
+
+    # Sau khi quét hết file, nếu có lỗi, tạo một thông báo tổng hợp và dừng chương trình
+    if long_address_errors:
+        error_message = f"Phát hiện {len(long_address_errors)} lỗi địa chỉ quá dài (> 128 ký tự). Vui lòng sửa trong file Excel:\n"
+        error_message += "\n".join(long_address_errors)
+        raise ValueError(error_message)
 
 def process_uploaded_file(uploaded_file_content, static_data, selected_chxd, price_periods, new_price_invoice_number, confirmed_date_str=None):
     """
