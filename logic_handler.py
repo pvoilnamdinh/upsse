@@ -351,7 +351,8 @@ def _analyze_date_ambiguity(worksheet):
     the_date = unique_dates.pop()
     if the_date.day > 12: return False, datetime(the_date.year, the_date.month, the_date.day), None
     try:
-        date_as_is, swapped_date = datetime(the_date.year, the_date.month, the_day), datetime(the_date.year, the_date.day, the_date.month)
+        # [SỬA LỖI] Thay thế a 'the_day' không xác định bằng 'the_date.day'
+        date_as_is, swapped_date = datetime(the_date.year, the_date.month, the_date.day), datetime(the_date.year, the_date.day, the_date.month)
         return (date_as_is != swapped_date), date_as_is, swapped_date
     except ValueError:
         return False, datetime(the_date.year, the_date.month, the_date.day), None
